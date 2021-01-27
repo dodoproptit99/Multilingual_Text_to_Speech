@@ -9,7 +9,7 @@ test = open("val.txt","a")
 data = []
 id = 1
 for line in f1.readlines():
-    filename = "ljspeech/wavs/"+line.split("|")[0]
+    filename = "wavs/"+line.split("|")[0]
     language = "en-us"
     speaker = "0"
     text = line.split("|")[1]
@@ -17,7 +17,7 @@ for line in f1.readlines():
     id+=1
 
 for line in f2.readlines():
-    filename = "numienbac/wavs/"+line.split("|")[0]
+    filename = "wavs/"+line.split("|")[0]
     language = "vi"
     speaker = "1"
     text = line.split("|")[1]

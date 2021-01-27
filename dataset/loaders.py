@@ -101,8 +101,8 @@ def ljspeech(root_path, meta_file=None):
     if meta_file is None: txt_file = os.path.join(root_path, "metadata.csv")
     assert os.path.isfile(txt_file), (f'Dataset meta-file not found: given given {txt_file}')  
     items = []
-    speaker_name = ""
-    language = ""
+    speaker_name = "0"
+    language = "en-us"
     with open(txt_file, 'r', encoding='utf-8') as ttf:
         for line in ttf:
             cols = line[:-1].split('|')
@@ -114,22 +114,24 @@ def ljspeech(root_path, meta_file=None):
             items.append([text, audio, speaker_name, language])
     return items
 
+def numienbac(root_path, meta_files=None):
+    """Load audios and meta files"""
+    if meta_file is None: 
+        txt_file = os.path.join(root_path, "metadata.txt")
+    else:
+        txt_file = meta_files
 
-def my_common_voice(root_path, meta_files=None):
-    """Load My Common Voice sound and meta files."""
-    if meta_files is None: meta_files = glob(f"{root_path}/*/meta.csv", recursive=True)
-    meta_files.sort()
+    assert os.path.isfile(txt_file), (f'Dataset meta-file not found: given given {txt_file}')  
     items = []
-    for meta_file in meta_files:
-        language_dir = os.path.dirname(meta_file)
-        with open(meta_file, 'r', encoding='utf-8') as ttf:
-            language = os.path.basename(language_dir)  
-            for line in ttf:       
-                cols = line.rstrip().split('|')
-                speaker_name = cols[0]  
-                audio = os.path.join(language, "wavs", cols[0], cols[1])
-                full_audio = os.path.join(root_path, audio)
-                assert os.path.isfile(full_audio), (
-                    f'Referenced audio file {full_audio} does not exist!')
-                items.append([cols[2], audio, speaker_name, language])
+    speaker_name = "1"
+    language = "vi"
+    with open(txt_file, 'r', encoding='utf-8') as ttf:
+        for line in ttf.readlines():
+            cols = line[:-1].split('|')
+            audio = os.path.join('wavs', cols[0] + '.wav')
+            full_audio = os.path.join(root_path, audio)
+            text = cols[1]
+            assert os.path.isfile(full_audio), (
+                    f'Referenced audio file {full_audio} does not exist!')  
+            items.append([text, audio, speaker_name, language])
     return items

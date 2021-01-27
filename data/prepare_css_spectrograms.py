@@ -13,33 +13,26 @@ if __name__ == '__main__':
     import re
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("--css10_directory", type=str, default="css10", help="Base directory of CSS10.")
-    parser.add_argument("--css_comvoi_directory", type=str, default="css_comvoi", help="Base directory of CSS10 with Common Voice.")
-    parser.add_argument("--comvoi_directory", type=str, default="comvoi_clean", help="Base directory of Common Voice.")
+    parser.add_argument("--ljspeech", type=str, default="ljspeech")
+    parser.add_argument("--numienbac", type=str, default="numienbac")
     parser.add_argument("--sample_rate", type=int, default=22050, help="Sample rate.")
     parser.add_argument("--num_fft", type=int, default=1102, help="Number of FFT frequencies.")
-    parser.add_argument("--num_mels", type=int, default=80, help="Number of mel bins.")
-    parser.add_argument("--stft_window_ms", type=float, default=50, help="STFT window size.")
-    parser.add_argument("--stft_shift_ms", type=float, default=12.5, help="STFT window shift.")
-    parser.add_argument("--no_preemphasis", action='store_false', help="Do not use preemphasis.")
-    parser.add_argument("--preemphasis", type=float, default=0.97, help="Strength of preemphasis.")
-
     args = parser.parse_args()
 
     hp.sample_rate = args.sample_rate
     hp.num_fft = args.num_fft
 
     files_to_solve = [
-        (args.css10_directory, "train.txt"),
-        (args.css10_directory, "val.txt"),
-        (args.css_comvoi_directory, "train.txt"),
-        (args.css_comvoi_directory, "val.txt"),
+        (args.numienbac, "train.txt"),
+        (args.numienbac, "val.txt"),
+        (args.ljspeech, "train.txt"),
+        (args.ljspeech, "val.txt"),
     ]
 
-    spectrogram_dirs = [os.path.join(args.comvoi_directory, 'spectrograms'), 
-                        os.path.join(args.comvoi_directory, 'linear_spectrograms'),
-                        os.path.join(args.css10_directory, 'spectrograms'), 
-                        os.path.join(args.css10_directory, 'linear_spectrograms')]
+    spectrogram_dirs = [os.path.join(args.ljspeech, 'spectrograms'), 
+                        os.path.join(args.ljspeech, 'linear_spectrograms'),
+                        os.path.join(args.numienbac, 'spectrograms'), 
+                        os.path.join(args.numienbac, 'linear_spectrograms')]
     for x in spectrogram_dirs:
         if not os.path.exists(x): os.makedirs(x)
 

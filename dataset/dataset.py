@@ -91,8 +91,8 @@ class TextToSpeechDataset(torch.utils.data.Dataset):
                     'audio': line_tokens[3],
                     'spectrogram': line_tokens[4],
                     'linear_spectrogram': line_tokens[5],
-                    'text': line_tokens[6],
-                    'phonemes': line_tokens[7]
+                    'text': line_tokens[6]
+                    # 'phonemes': line_tokens[7]
                 }
                 if item['language'] in hp.languages:
                     if line_tokens[1] not in unique_speakers_set:
@@ -103,7 +103,7 @@ class TextToSpeechDataset(torch.utils.data.Dataset):
         # clean text with basic stuff -- multiple spaces, case sensitivity and punctuation
         for idx in range(len(self.items)):
             item_text = self.items[idx]['text']
-            item_phon = self.items[idx]['phonemes'] 
+            # item_phon = self.items[idx]['phonemes'] 
             if not hp.use_punctuation: 
                 item_text = text.remove_punctuation(item_text)
                 item_phon = text.remove_punctuation(item_phon)
@@ -113,11 +113,11 @@ class TextToSpeechDataset(torch.utils.data.Dataset):
                 item_text = text.remove_odd_whitespaces(item_text)
                 item_phon = text.remove_odd_whitespaces(item_phon)
             self.items[idx]['text'] = item_text
-            self.items[idx]['phonemes'] = item_phon
+            # self.items[idx]['phonemes'] = item_phon
 
         # convert text into a sequence of character IDs, convert language and speaker names to IDs
         for idx in range(len(self.items)):
-            self.items[idx]['phonemes'] = text.to_sequence(self.items[idx]['phonemes'], use_phonemes=True)
+            # self.items[idx]['phonemes'] = text.to_sequence(self.items[idx]['phonemes'], use_phonemes=True)
             self.items[idx]['text'] = text.to_sequence(self.items[idx]['text'], use_phonemes=False)
             self.items[idx]['speaker'] = self.unique_speakers.index(self.items[idx]['speaker'])
             self.items[idx]['language'] = hp.languages.index(self.items[idx]['language'])
@@ -130,7 +130,7 @@ class TextToSpeechDataset(torch.utils.data.Dataset):
         audio_path = item['audio']
         mel_spec = self.load_spectrogram(audio_path, item['spectrogram'], hp.normalize_spectrogram, True)
         lin_spec = self.load_spectrogram(audio_path, item['linear_spectrogram'], hp.normalize_spectrogram, False) if hp.predict_linear else None
-        return (item['speaker'], item['language'], item['phonemes'] if hp.use_phonemes else item['text'], mel_spec, lin_spec)
+        return (item['speaker'], item['language'], """item['phonemes'] if hp.use_phonemes else"""item['text'], mel_spec, lin_spec)
 
     def load_spectrogram(self, audio_path, spectrogram_path, normalize, is_mel):
         """Load a mel or linear spectrogram from file or compute from scratch if needed.

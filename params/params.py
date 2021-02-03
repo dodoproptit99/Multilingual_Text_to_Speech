@@ -10,7 +10,7 @@ class Params:
     """
     
     epochs = 300                         # training epochs
-    batch_size = 52                      # batch size during training (is parallelization is True, each GPU has batch_size // num_gpus examples)
+    batch_size = 32                      # batch size during training (is parallelization is True, each GPU has batch_size // num_gpus examples)
                                          # if using encoder_type 'convolutional' or 'generated', should be divisible by the number of languages 
     learning_rate = 1e-3                 # starting learning rate
     learning_rate_decay = 0.5            # decay multiplier used by step learning rate scheduler (use 0.5 for halving)
@@ -37,12 +37,12 @@ class Params:
     ******************* DATASET SPECIFICATION *******************
     """
     
-    dataset = "ljspeech"                 # one of: css10, ljspeech, vctk, my_blizzard, my_common_voice, mailabs, must have implementation in loaders.py
+    dataset = "numienbac"                 # one of: css10, ljspeech, vctk, my_blizzard, my_common_voice, mailabs, must have implementation in loaders.py
     cache_spectrograms = True            # if True, during iterating the dataset, it first tries to load spectrograms (mel or linear) from cached files 
-    languages = ['en-us', 'vi']                # list of lnguages which will be loaded from the dataset, codes should correspond to 
+    languages = ['vi','en-us']                # list of lnguages which will be loaded from the dataset, codes should correspond to 
                                          # espeak format (see 'phonemize --help) in order support the converion to phonemes
     balanced_sampling = False            # enables balanced sampling per languages (not speakers), multi_language must be True
-    perfect_sampling = False             # used just if balanced_sampling is True, should be used together with encoder_type 'convolutional' or 'generated'
+    perfect_sampling = False           # used just if balanced_sampling is True, should be used together with encoder_type 'convolutional' or 'generated'
                                          # if True, each language has the same number of samples and these samples are grouped, batch_size must be divisible
                                          # if False, samples are taken from the multinomial distr. with replacement
 
@@ -50,9 +50,9 @@ class Params:
     *************************** TEXT ****************************
     """
 
-    characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz '    # supported input alphabet, used for computation of character embeddings
+    characters = 'aáàạãảăắằặẵẳâấầậẫẩbcdđeéèẹẽẻêếềệễểghiíìịĩỉklmnoóòọõỏôốồộỗổơớờợỡởpqrstuúùụũủưứừựữửvxyýỳỵỹỷfjzw '    # supported input alphabet, used for computation of character embeddings
     # for lower-case russian, greek, latin and pinyin use " abcdefghijklmnopqrstuvwxyzçèéßäöōǎǐíǒàáǔüèéìūòóùúāēěīâêôûñőűабвгдежзийклмнопрстуфхцчшщъыьэюяё"
-    case_sensitive = True                # if False, all characters are lowered before usage 
+    case_sensitive = False             # if False, all characters are lowered before usage 
     remove_multiple_wspaces = True       # if True, multiple whitespaces, leading and trailing whitespaces, etc. are removed
     use_punctuation = True               # if True, punctuation is preserved and punctuations_{in, out} are used
     punctuations_out = '、。，"(),.:;¿?¡!\\'    # punctuation which usualy occurs outside words (important during phonemization)
@@ -103,8 +103,8 @@ class Params:
     cbhg_highway_dimension = 128         # used if predict_linear is True
     cbhg_rnn_dim = 128                   # used if predict_linear is True
     cbhg_dropout = 0.0                   # used if predict_linear is True
-    multi_speaker = False                # if True, multi-speaker model is used, speaker embeddings are concatenated to encoder outputs
-    multi_language = False               # if True, multi-lingual model is used, language embeddings are concatenated to encoder outputs
+    multi_speaker = True                # if True, multi-speaker model is used, speaker embeddings are concatenated to encoder outputs
+    multi_language = True               # if True, multi-lingual model is used, language embeddings are concatenated to encoder outputs
     speaker_embedding_dimension = 32     # used if multi_speaker is True, size of the speaker embedding
     language_embedding_dimension = 4     # used if multi_language is True, size of the language embedding
     input_language_embedding = 4         # used if encoder_type is 'shared', language embedding of this size is concatenated to input char. embeddings

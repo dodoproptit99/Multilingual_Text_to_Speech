@@ -6,12 +6,11 @@ sys.path.insert(0, "../")
 
 from utils import audio
 from params.params import Params as hp
-
+from audio import audio as audio_processing
 
 if __name__ == '__main__':
     import argparse
     import re
-    
     parser = argparse.ArgumentParser()
     parser.add_argument("--ljspeech", type=str, default="ljspeech")
     parser.add_argument("--numienbac", type=str, default="numienbac")
@@ -62,7 +61,10 @@ if __name__ == '__main__':
 
                 mel_path = os.path.join(d, mel_path_partial)
                 if not os.path.exists(mel_path):
-                    np.save(mel_path, audio.spectrogram(audio_data, True))
+                    mel, energy = audio_processing.tools.get_mel(audio_path)
+                    mel = mel.numpy().astype(np.float32)
+                    np.save(mel_path, mel)
+                    # np.save(mel_path, audio.spectrogram(audio_data, True))
                 lin_path = os.path.join(d, lin_path_partial)
                 if not os.path.exists(lin_path):
                     np.save(lin_path, audio.spectrogram(audio_data, False))

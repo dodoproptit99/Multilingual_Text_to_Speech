@@ -4,11 +4,15 @@ from datetime import datetime
 
 import numpy as np
 import torch
-
+import json
 from utils import audio, text
 from utils import build_model
 from params.params import Params as hp
 from modules.tacotron2 import Tacotron
+from scipy.io import wavfile
+
+from hifi_gan.models import Generator
+from hifi_gan.env import AttrDict
 
 """
 
@@ -35,6 +39,87 @@ from modules.tacotron2 import Tacotron
 
 """
 
+def get_hifiGAN(filepath):
+    config_file = os.path.join('hifi_gan/config_v1.json')
+    with open(config_file) as f:
+        data = f.read()
+    json_config = json.loads(data)
+    h = AttrDict(json_config)
+
+    torch.manual_seed(h.seed)
+    print("Loading hifi-gan: '{}'".format(filepath))
+    checkpoint_dict = torch.load(filepath, map_location=torch.device("cuda"))
+
+    generator = Generator(h).to(torch.device("cuda"))
+    generator.load_state_dict(checkpoint_dict['generator'])
+    generator.eval()
+    generator.remove_weight_norm()
+    return generator
+
+def from_float(_input, dtype):
+    if dtype == np.float64:
+        return _input, np.float64
+    elif dtype == np.float32:
+        return _input.astype(np.float32)
+    elif dtype == np.uint8:
+        return ((_input * 128) + 128).astype(np.uint8)
+    elif dtype == np.int16:
+        return (_input * 32768).astype(np.int16)
+    elif dtype == np.int32:
+        return (_input * 2147483648).astype(np.int32)
+    raise ValueError('Unsupported wave file format'.format(_input.dtype))
+
+def hifiGAN_infer(mel, generator):
+    with torch.no_grad():
+        wav = generator(mel) 
+        audio = wav.squeeze()
+        audio = audio.cpu().numpy()
+    return audio
+
+def split_long_sentence(text, max_words):
+    result = []
+    for sub_sen in text.strip().split(','):
+        sub_sen = sub_sen.strip()
+        tokens = []
+        for word in sub_sen.split():
+            tokens.append(word)
+            if len(tokens) % max_words == 0:
+                tokens.append(",")
+        result.append(' '.join(tokens))
+    text = ','.join(result)
+    result = []
+    sen = ""
+    for sub_sen in text.strip().split(','):
+        sub_sen = sub_sen.strip()
+        if len((sen + " " + sub_sen).split()) > max_words:
+            result.append(sen)
+            sen = ""
+        if len(sen) > 0:
+            sen += " , "
+        sen += sub_sen
+    if len(sen) > 0:
+        result.append(sen)
+    return result
+
+def split_text(text, max_word):
+    sens_out = []
+    sen_out = ''
+    for sen in text.split('.'):
+        sen = sen.strip()
+        if sen:
+            sen = sen + ' . '
+            if max_word > len(sen.split()):
+                if len(sen_out.split()) < max_word - len(sen.split()):
+                    sen_out += sen
+                else:
+                    sens_out.append(sen_out[:-1])
+                    sen_out = sen
+            else:
+                sens_out.append(sen_out[:-1])
+                sen_out = ''
+                sens_out.append(sen[:-1])
+    sens_out.append(sen_out[:-1])
+    return sens_out
 
 def synthesize(model, input_data, force_cpu=False):
 
@@ -44,9 +129,7 @@ def synthesize(model, input_data, force_cpu=False):
     if not hp.use_punctuation: 
         clean_text = text.remove_punctuation(clean_text)
     if not hp.case_sensitive: 
-        clean_text = text.to_lower(clean_text)
-    if hp.remove_multiple_wspaces: 
-        clean_text = text.remove_odd_whitespaces(clean_text)
+        clean_text = clean_text.lower()
 
     t = torch.LongTensor(text.to_sequence(clean_text, use_phonemes=hp.use_phonemes))
 
@@ -55,7 +138,7 @@ def synthesize(model, input_data, force_cpu=False):
         t_length = len(clean_text) + 1
         l = []
         for token in l_tokens:
-            l_d = token.split('-')
+            l_d = token.split('#')
  
             language = [0] * hp.language_number
             for l_cw in l_d[0].split(':'):
@@ -77,8 +160,7 @@ def synthesize(model, input_data, force_cpu=False):
         if s is not None: s = s.cuda(non_blocking=True)
 
     s = model.inference(t, speaker=s, language=l).cpu().detach().numpy()
-    s = audio.denormalize_spectrogram(s, not hp.predict_linear)
-
+    # s = audio.denormalize_spectrogram(s, not hp.predict_linear)
     return s
 
 
@@ -87,36 +169,59 @@ if __name__ == '__main__':
     import re
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--checkpoint", type=str, required=True, help="Model checkpoint.")
-    parser.add_argument("--output", type=str, default=".", help="Path to output directory.")
+    parser.add_argument("--checkpoint", type=str, help="Model checkpoint.", default="1.0_loss-49-0.146")
+    parser.add_argument("--output", type=str, default="result", help="Path to output directory.")
     parser.add_argument("--cpu", action='store_true', help="Force to run on CPU.")
     parser.add_argument("--save_spec", action='store_true', help="Saves also spectrograms if set.")
     parser.add_argument("--ignore_wav", action='store_true', help="Does not save waveforms if set.")
+    parser.add_argument("--vocoder", type=str, default="g_00250000")
+    parser.add_argument("--source", type=str, default=None)
+    parser.add_argument("--name", type=str, default="sample")
     args = parser.parse_args()
 
     print("Building model ...")
 
-    model = build_model(args.checkpoint, args.cpu)
+    model = build_model(args.checkpoint, force_cpu=False)
     model.eval()
 
-    #total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    #print(f"Builded model with {total_params} parameters")
+    if not os.path.exists(args.output):
+        os.makedirs(args.output)
 
-    inputs = [l.rstrip() for l in sys.stdin.readlines() if l]
+    # inputs = "full_eng_4|Zalo collects and uses the following information to provide Zalo AI services. While information can be collected when you upload, it will not be used for other purposes than providing these experiment services. Requested information will be destroyed without delay (within 1 week) after providing experiment services.|1|en-us"
+    # print(f'Synthesizing: Text: "{inputs.split("|")[1]}"')
+    # s = synthesize(model, inputs, force_cpu=False)
+    # np.save(os.path.join(args.output, f'{inputs.split("|")[0]}.npy'), s)
+    # w = audio.inverse_spectrogram(s, not hp.predict_linear)
+    # audio.save(w, os.path.join(args.output, f'{inputs.split("|")[0]}.wav'))
 
-    spectrograms = []
-    for i, item in enumerate(inputs):
+    hifiGAN = get_hifiGAN(args.vocoder)
+    sentence = ""
+    if args.source is not None:
+        f = open(args.source, "r")
+        for line in f.readlines():
+            sentence += line
+        f.close()  
+    else:
+        sentence = "xin chào các bạn ạ , mình là đô đô . cảm ơn bạn đã lắng nghe #"
+    sens = split_text(sentence.lower(), 50)
+    audio_out = []
+    with torch.no_grad():
+        for sen in sens:
+            for sub_sen in split_long_sentence(sen, 50):
+                sub_sen = sub_sen.strip().strip(',').strip()
+                print("Text: "+sub_sen)
+                final_input = args.name+"|"+sub_sen+"|1|vi" # 1 is vietnamese speaker, can change between 0,1 ; vi | en-us
+                mel = synthesize(model, final_input, force_cpu=False)   
+                # mel = audio.db_to_amplitude(mel)
+                mel = torch.from_numpy(mel).to(torch.device("cuda"))
+                mel = torch.unsqueeze(mel, 0)
+                print(mel.shape)
+                wav = hifiGAN_infer(mel, hifiGAN)
 
-        print(f'Synthesizing({i+1}/{len(inputs)}): "{item[1]}"')
+                audio_out += wav.tolist() + [0] * int(0.15 * 22050)
+            audio_out += [0] * int(0.25 * 22050)
 
-        s = synthesize(model, item[1], args.cpu)
-
-        if not os.path.exists(args.output):
-            os.makedirs(args.output)
-
-        if args.save_spec:
-            np.save(os.path.join(args.output, f'{item[0]}.npy'), s)
-
-        if not args.ignore_wav:
-            w = audio.inverse_spectrogram(s, not hp.predict_linear)
-            audio.save(w, os.path.join(args.output, f'{item[0]}.wav'))
+    audio_out = np.array(audio_out)
+    audio_out = from_float(audio_out, np.float32)
+    # wavfile.write(args.output+"/"+args.name+".wav", 22050, audio_out)
+    wavfile.write("sample.wav", 22050, audio_out)

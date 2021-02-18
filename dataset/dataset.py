@@ -130,7 +130,8 @@ class TextToSpeechDataset(torch.utils.data.Dataset):
         audio_path = item['audio']
         mel_spec = self.load_spectrogram(audio_path, item['spectrogram'], hp.normalize_spectrogram, True)
         lin_spec = self.load_spectrogram(audio_path, item['linear_spectrogram'], hp.normalize_spectrogram, False) if hp.predict_linear else None
-        return (item['speaker'], item['language'], """item['phonemes'] if hp.use_phonemes else"""item['text'], mel_spec, lin_spec)
+        return (item['speaker'], item['language'], item['text'], mel_spec, lin_spec)
+        # return (item['speaker'], item['language'], item['phonemes'] if hp.use_phonemes else item['text'], mel_spec, lin_spec)
 
     def load_spectrogram(self, audio_path, spectrogram_path, normalize, is_mel):
         """Load a mel or linear spectrogram from file or compute from scratch if needed.

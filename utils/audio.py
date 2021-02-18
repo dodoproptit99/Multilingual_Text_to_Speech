@@ -24,7 +24,8 @@ def save(data, path):
 
 def ms_to_frames(ms):
     """Convert milliseconds into number of frames."""
-    return int(hp.sample_rate * ms / 1000)
+    return ms
+    # return int(hp.sample_rate * ms / 1000)
 
 
 def trim_silence(data, window_ms, hop_ms, top_db=50, margin_ms=0):

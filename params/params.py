@@ -123,18 +123,24 @@ class Params:
     """
 
     sample_rate = 22050                  # sample rate of source .wavs, used while computing spectrograms, MFCCs, etc.
-    num_fft = 1102                       # number of frequency bins used during computation of spectrograms
+    num_fft = 1024                       # number of frequency bins used during computation of spectrograms
     num_mels = 80                        # number of mel bins used during computation of mel spectrograms
     num_mfcc = 13                        # number of MFCCs, used just for MCD computation (during training)
-    stft_window_ms = 50                  # size in ms of the Hann window of short-time Fourier transform, used during spectrogram computation
-    stft_shift_ms = 12.5                 # shift of the window (or better said gap between windows) in ms
+    stft_window_ms = 1024                  # size in ms of the Hann window of short-time Fourier transform, used during spectrogram computation
+    stft_shift_ms = 256                 # shift of the window (or better said gap between windows) in ms
     griffin_lim_iters = 60               # used if vocoding using Griffin-Lim algorithm (synthesize.py), greater value does not make much sense
     griffin_lim_power = 1.5              # power applied to spectrograms before using GL
-    normalize_spectrogram = True         # if True, spectrograms are normalized before passing into the model, a per-channel normalization is used
+    normalize_spectrogram = False         # if True, spectrograms are normalized before passing into the model, a per-channel normalization is used
                                          # statistics (mean and variance) are computed from dataset at the start of training  
     use_preemphasis = True               # if True, a preemphasis is applied to raw waveform before using them (spectrogram computation)
     preemphasis = 0.97                   # amount of preemphasis, used if use_preemphasis is True
 
+    filter_length = 1024
+    hop_length = 256
+    win_length = 1024
+    mel_fmin = 95.0
+    mel_fmax = 7600.0
+    max_wav_value = 32768.0
 
     @staticmethod
     def load_state_dict(d):

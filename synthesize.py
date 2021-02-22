@@ -169,7 +169,7 @@ if __name__ == '__main__':
     import re
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--checkpoint", type=str, help="Model checkpoint.", default="1.0_loss-49-0.146")
+    parser.add_argument("--checkpoint", type=str, help="Model checkpoint.", default="2.0_loss-149-0.459")
     parser.add_argument("--output", type=str, default="result", help="Path to output directory.")
     parser.add_argument("--cpu", action='store_true', help="Force to run on CPU.")
     parser.add_argument("--save_spec", action='store_true', help="Saves also spectrograms if set.")
@@ -203,25 +203,25 @@ if __name__ == '__main__':
         f.close()  
     else:
         sentence = "xin chào các bạn ạ , mình là đô đô . cảm ơn bạn đã lắng nghe #"
-    sens = split_text(sentence.lower(), 50)
+    sens = split_text(sentence.lower(), 15)
     audio_out = []
     with torch.no_grad():
         for sen in sens:
-            for sub_sen in split_long_sentence(sen, 50):
-                sub_sen = sub_sen.strip().strip(',').strip()
+            for sub_sen in split_long_sentence(sen, 15):
+                sub_sen = sub_sen.strip().strip(',').strip() 
+                if sub_sen[-1] != ".":
+                    sub_sen += " ,"
                 print("Text: "+sub_sen)
                 final_input = args.name+"|"+sub_sen+"|1|vi" # 1 is vietnamese speaker, can change between 0,1 ; vi | en-us
                 mel = synthesize(model, final_input, force_cpu=False)   
-                # mel = audio.db_to_amplitude(mel)
+
                 mel = torch.from_numpy(mel).to(torch.device("cuda"))
                 mel = torch.unsqueeze(mel, 0)
-                print(mel.shape)
                 wav = hifiGAN_infer(mel, hifiGAN)
 
-                audio_out += wav.tolist() + [0] * int(0.15 * 22050)
-            audio_out += [0] * int(0.25 * 22050)
+                audio_out += wav.tolist() #+ [0] * int(0 * 22050)
+            audio_out += [0] * int(0.1 * 22050)
 
     audio_out = np.array(audio_out)
     audio_out = from_float(audio_out, np.float32)
-    # wavfile.write(args.output+"/"+args.name+".wav", 22050, audio_out)
-    wavfile.write("sample.wav", 22050, audio_out)
+    wavfile.write(args.output+"/"+args.name+".wav", 22050, audio_out)

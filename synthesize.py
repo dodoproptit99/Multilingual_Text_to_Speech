@@ -13,7 +13,7 @@ from scipy.io import wavfile
 
 from hifi_gan.models import Generator
 from hifi_gan.env import AttrDict
-
+from time import time
 """
 
 ******************************************************** INSTRUCTIONS ********************************************************
@@ -183,7 +183,6 @@ if __name__ == '__main__':
 
     model = build_model(args.checkpoint, force_cpu=False)
     model.eval()
-
     if not os.path.exists(args.output):
         os.makedirs(args.output)
 
@@ -203,25 +202,28 @@ if __name__ == '__main__':
         f.close()  
     else:
         sentence = "xin chào các bạn ạ , mình là đô đô . cảm ơn bạn đã lắng nghe #"
-    sens = split_text(sentence.lower(), 15)
+    sens = split_text(sentence.lower(), 50)
     audio_out = []
+    total_time_decode = 0
     with torch.no_grad():
         for sen in sens:
-            for sub_sen in split_long_sentence(sen, 15):
+            for sub_sen in split_long_sentence(sen, 50):
                 sub_sen = sub_sen.strip().strip(',').strip() 
                 if sub_sen[-1] != ".":
                     sub_sen += " ,"
                 print("Text: "+sub_sen)
                 final_input = args.name+"|"+sub_sen+"|1|vi" # 1 is vietnamese speaker, can change between 0,1 ; vi | en-us
+                t = time()
                 mel = synthesize(model, final_input, force_cpu=False)   
 
                 mel = torch.from_numpy(mel).to(torch.device("cuda"))
                 mel = torch.unsqueeze(mel, 0)
                 wav = hifiGAN_infer(mel, hifiGAN)
-
+                total_time_decode += time() - t
                 audio_out += wav.tolist() #+ [0] * int(0 * 22050)
             audio_out += [0] * int(0.1 * 22050)
 
     audio_out = np.array(audio_out)
     audio_out = from_float(audio_out, np.float32)
     wavfile.write(args.output+"/"+args.name+".wav", 22050, audio_out)
+    print("Total time decode: "+ str(total_time_decode))

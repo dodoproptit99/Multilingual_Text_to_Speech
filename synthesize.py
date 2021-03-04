@@ -10,10 +10,11 @@ from utils import build_model
 from params.params import Params as hp
 from modules.tacotron2 import Tacotron
 from scipy.io import wavfile
-
+import requests
 from hifi_gan.models import Generator
 from hifi_gan.env import AttrDict
 from time import time
+from ZaG2P.api import G2S, load_model
 """
 
 ******************************************************** INSTRUCTIONS ********************************************************
@@ -163,6 +164,12 @@ def synthesize(model, input_data, force_cpu=False):
     # s = audio.denormalize_spectrogram(s, not hp.predict_linear)
     return s
 
+full_dict = []
+def norm(word):
+    if word  not in full_dict:
+        r = requests.get(f"http:/localhost:5002/norm/{word}")
+        return r.content
+    return word
 
 if __name__ == '__main__':
     import argparse
@@ -179,19 +186,15 @@ if __name__ == '__main__':
     parser.add_argument("--name", type=str, default="sample")
     args = parser.parse_args()
 
-    print("Building model ...")
-
     model = build_model(args.checkpoint, force_cpu=False)
     model.eval()
     if not os.path.exists(args.output):
         os.makedirs(args.output)
-
-    # inputs = "full_eng_4|Zalo collects and uses the following information to provide Zalo AI services. While information can be collected when you upload, it will not be used for other purposes than providing these experiment services. Requested information will be destroyed without delay (within 1 week) after providing experiment services.|1|en-us"
-    # print(f'Synthesizing: Text: "{inputs.split("|")[1]}"')
-    # s = synthesize(model, inputs, force_cpu=False)
-    # np.save(os.path.join(args.output, f'{inputs.split("|")[0]}.npy'), s)
-    # w = audio.inverse_spectrogram(s, not hp.predict_linear)
-    # audio.save(w, os.path.join(args.output, f'{inputs.split("|")[0]}.wav'))
+    
+    f = open("lexicon.txt","r")
+    for line in f.readlines():
+        full_dict.append(line.strip())
+    f.close()
 
     hifiGAN = get_hifiGAN(args.vocoder)
     sentence = ""
@@ -201,10 +204,12 @@ if __name__ == '__main__':
             sentence += line
         f.close()  
     else:
-        sentence = "xin chào các bạn ạ , mình là đô đô . cảm ơn bạn đã lắng nghe #"
+        sentence = "xin chào các bạn ạ , bali moon . cảm ơn bạn đã lắng nghe #"
+    
     sens = split_text(sentence.lower(), 50)
     audio_out = []
     total_time_decode = 0
+    
     with torch.no_grad():
         for sen in sens:
             for sub_sen in split_long_sentence(sen, 50):
